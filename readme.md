@@ -69,9 +69,10 @@ Unity 2021+ with the Faze4 project open.
 
 ## Usage
 
-1. Open the Unity project assign `CameraStreamReceiver.cs` to a GameObject with a `RawImage` component
-2. Press **Play** in the Editor
-3. Run the latest Python script:
+1. Open the Unity project 
+2. Assign `CameraStreamReceiver.cs` to a GameObject with a `RawImage` component
+3. Press **Play** in the editor
+4. Run the latest Python script:
 
 ```bash
 python v7_smooth_control.py
