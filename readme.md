@@ -69,8 +69,8 @@ Unity 2021+ with the Faze4 project open.
 
 ## Usage
 
-1. Assign `CameraStreamReceiver.cs` to a GameObject with a `RawImage` component
-2. Open the Unity project and press **Play**
+1. Open the Unity project assign `CameraStreamReceiver.cs` to a GameObject with a `RawImage` component
+2. Press **Play** in the Editor
 3. Run the latest Python script:
 
 ```bash
