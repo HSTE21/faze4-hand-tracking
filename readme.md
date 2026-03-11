@@ -100,33 +100,38 @@ Both TCP channels (robot control + camera stream) retry until the other side is 
 | Parameter | Default | Description |
 | --- | --- | --- |
 | `alpha` (in IK loop) | `0.15` | Smoothing factor. Lower = smoother but slight delay, Higher = more responsive but more jitter. |
-| `MOTION_SCALE` | `0.000423` | XY amplification — matched to resolution calibration |
-| `Z_SCALE` | `0.010` | Z-axis sensitivity — increase for more depth response |
-| `HAND_WRIST_TO_MCP_MM` | `80.0` | Measured wrist crease to index finger knuckle in mm |
+| `MOTION_SCALE` | `0.000423` | Amplifies XY hand motion to fit the robot's workspace for comfortable desk use. |
+| `Z_SCALE` | `0.010` | Amplifies Z-axis (depth) hand motion for responsive control without large arm movements. |
+| `HAND_WRIST_TO_MCP_MM` | `80.0` | Your physical wrist-to-knuckle distance (mm). Critical for Z-axis depth calibration. |
 | `WORKSPACE_X_OFFSET` | `0.35` | Robot rest position X (meters) |
 | `WORKSPACE_Y_OFFSET` | `-0.25` | Robot rest position Y (meters) |
-| `WORKSPACE_Z` | `-0.270` | Robot neutral height Z (meters) - optimized for desk use |
+| `WORKSPACE_Z` | `-0.270` | Robot neutral height Z (meters) - optimized for desk use. |
 | `MIRROR_CAMERA` | `True` | Mirror feed so hand left = screen left |
 | `JPEG_QUALITY` | `60` | Camera stream quality to Unity |
 
 ---
 
-## Workspace Scaling
+## Workspace Scaling and Control Logic
 
-`MM_PER_PX = 0.4085` converts wrist pixel position to physical mm in the camera
-plane. `MOTION_SCALE` then maps those mm values to robot workspace meters.
+The system translates hand movements into robot commands through a multi-step scaling process designed for responsive and ergonomic desktop use.
 
-### A Note on XY Tracking Accuracy and Depth
+1.  **Pixel to Millimeter Conversion:** The hand's wrist position in pixels $(x_{px}, y_{px})$ is first converted to physical millimeters in the camera's 2D plane using the corrected `MM_PER_PX` factor (`1.449 mm/px`). This provides a metric measurement of hand movement at the calibration distance.
 
-The `MM_PER_PX` conversion factor is calculated from a calibration image taken at a fixed distance (e.g., ~1 meter). This means the XY-plane tracking is only metrically 1:1 accurate when your hand is at that specific distance from the camera.
+2.  **XY-Axis Workspace Mapping:** The millimeter coordinates $(x_{mm}, y_{mm})$ are mapped to the robot's XY workspace. Instead of a direct 1:1 metric conversion (which would use a `MOTION_SCALE` of `0.001`), an empirically chosen `MOTION_SCALE` of `0.000423` is used.
+    *   **Reasoning:** A true 1:1 scale would require impractically large hand movements to cover the robot's full range from a desk. The smaller `MOTION_SCALE` value amplifies hand motion, allowing the user to control the entire robot workspace with comfortable, small movements.
 
-**This is a perspective effect, not a bug.** Because of camera projection, an object's size in pixels shrinks as its distance from the camera increases.
+3.  **Z-Axis (Depth) Control:** Depth is estimated by measuring the apparent distance between the user's wrist and index finger knuckle (`d_img`) in the camera view. This is compared to a pre-measured reference distance (`d_ref`, e.g., 80mm). The difference is scaled by `Z_SCALE`.
+    *   **Reasoning:** A `Z_SCALE` of `0.010` is used instead of a 1:1 scale (`0.001`). This amplifies the small, natural changes in hand-to-camera distance into a full, usable Z-axis range for the robot, avoiding the need for large forward/backward arm movements.
 
-* **At the calibration distance (~1m):** A 10cm hand movement correctly translates to a 10cm equivalent robot movement.
-* **Further away (>1m):** The same 10cm hand movement covers fewer pixels, resulting in a smaller-than-10cm robot movement.
-* **Closer (<1m):** The hand movement will be amplified, resulting in a larger robot movement.
+4.  **Inverse Kinematics (IK):** The final smoothed target position vector `[X, Y, Z]` is fed into the PyBullet IK solver, which calculates the required joint angles for the Faze4 arm. These angles are then streamed to Unity.
 
-The current system uses this fixed scaler for simplicity. For true 1:1 tracking across different depths, the XY scaling would need to be dynamically adjusted based on the calculated Z-distance. This correction is possible and could be implemented in a future version for applications requiring higher spatial accuracy.
+### A Note on Perspective and Accuracy
+
+The XY-plane tracking is only metrically 1:1 accurate when your hand is at the specific distance from the camera used during calibration (~1 meter). This is a natural consequence of camera perspective:
+*   **Further away (>1m):** A 10cm hand movement covers fewer pixels, resulting in a smaller robot movement.
+*   **Closer (<1m):** The same hand movement covers more pixels and is amplified into a larger robot movement.
+
+For true 1:1 spatial mapping across all depths, the `MOTION_SCALE` would need to be dynamically adjusted based on the estimated Z-distance. The current fixed-scaler approach prioritizes simplicity and intuitive control feel over absolute metric accuracy.
 
 ---
 
